@@ -1,3 +1,3 @@
 
-CREATE SCHEMA IF NOT EXISTS t_gophermart;
+CREATE SCHEMA IF NOT EXISTS tgassist;
 

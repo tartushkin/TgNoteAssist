@@ -12,11 +12,14 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-//var embedMigrations embed.FS
+const (
+	path = "file://migrations"
+	pgx  = "pgx"
+)
 
 func NewConnection(ctx context.Context, ps string) (*sql.DB, error) {
 
-	db, err := sql.Open("pgx", ps)
+	db, err := sql.Open(pgx, ps)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при открытии базы данных %w", err)
 	}
@@ -31,7 +34,7 @@ func NewConnection(ctx context.Context, ps string) (*sql.DB, error) {
 
 func migrations(ps string) error {
 	m, err := migrate.New(
-		"file://migrations", //migrations
+		path,
 		ps)
 	if err != nil {
 		return fmt.Errorf("ошибка создания объекта миграции: %w  Строка подключения - %s", err, ps)

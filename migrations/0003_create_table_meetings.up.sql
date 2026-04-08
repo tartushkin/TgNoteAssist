@@ -1,0 +1,17 @@
+
+--CREATE table IF NOT EXISTS tgassist.t_meetings (
+--    n_id     bigint PRIMARY KEY,
+--    s_user   VARCHAR(100) NOT NULL,
+--    s_title  VARCHAR(100) NOT NULL,
+--    t_text   text NOT NULL,
+--    dt_created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--
+--    FOREIGN KEY (s_user) REFERENCES tgassist.t_users(s_user_name) ON DELETE CASCADE
+--);
+--
+--COMMENT ON TABLE  tgassist.t_meetings IS 'Таблица встреч';
+--COMMENT ON COLUMN tgassist.t_meetings.n_id IS 'идентификатор всречи';
+--COMMENT ON COLUMN tgassist.t_meetings.s_user IS 'пользователь';
+--COMMENT ON COLUMN tgassist.t_meetings.s_title IS 'наименование встречи';
+--COMMENT ON COLUMN tgassist.t_meetings.t_text IS 'расшифровка встречи';
+--COMMENT ON COLUMN tgassist.t_meetings.dt_created_at IS 'дата регистрации встречи в боте';

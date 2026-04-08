@@ -6,8 +6,10 @@ type UserReq struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
-
-type UserOrderRes struct {
+type UserMeetListRes struct {
+	List []*File
+}
+type UserMeet struct {
 	Order   string  `json:"number"`
 	Status  string  `json:"status"`
 	Accrual float32 `json:"accrual,omitempty"`

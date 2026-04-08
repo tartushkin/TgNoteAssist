@@ -1,84 +1,81 @@
 package service
 
 import (
+	"TgNoteAssist/internal/model"
 	"context"
-	"fmt"
-	"musthave/internal/model"
+	"time"
 
-	"github.com/shopspring/decimal"
-	"golang.org/x/crypto/bcrypt"
+	tb "gopkg.in/telebot.v3"
 )
 
-func (m *Market) LoadStorageUser(ctx context.Context) error {
+func (m *TgAssist) LoadStorageUser(ctx context.Context) error {
 	list, err := m.Repo.GetUserList(ctx)
 	if err != nil {
 		return err
 	}
 
 	for _, user := range list {
-		orderList, err := m.Repo.GetOrderList(ctx, user.Login)
+		fileList, err := m.Repo.GetFileList(ctx, user.NickName)
 		if err != nil {
 			return err
 		}
 
-		user.OrderList = make(map[int]*model.Order)
-		for _, order := range orderList {
-			user.OrderList[order.OrderID] = order
+		user.FileList = make(map[int]*model.File)
+		for _, file := range fileList {
+			user.FileList[file.MsgID] = file
 		}
 		m.Mu.Lock()
-		m.UserCH[user.Login] = user
+		m.UserCH[user.TgID] = user
 		m.Mu.Unlock()
 	}
 	return nil
 }
 
-func (m *Market) RegisterUser(log string, pass string) error {
-	m.Lg.Info("RegisterUser.start - начало регестрации нового пользователя: " + log)
-
-	err := m.create(log, pass) // упаковка пользователя
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// create - проверка и регистрация нового пользователя
-func (m *Market) create(log string, pass string) error {
-	m.Mu.RLock()
-	_, ok := m.UserCH[log]
-	m.Mu.RUnlock()
+func (t *TgAssist) RegisterUser(inсomUser *tb.User) (*model.User, error) {
+	user, ok := t.GetUser(inсomUser.ID)
 	if ok {
-		return fmt.Errorf(" пользователь с логином %s уже существует", log) // логин есть, нужна кастомная ошибка и проверка на каастом извне
+		t.Lg.Info("RegisterUser - пользователь: " + inсomUser.Username + " - известен сервису.")
+		return user, nil
 	}
 
-	hash, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
-	user := &model.User{
-		Login:     log,
-		PassHash:  string(hash),
-		OrderList: make(map[int]*model.Order),
-	}
-	err := m.Repo.RegisterUser(m.Ctx, log, string(hash))
+	t.Lg.Info("RegisterUser - пользователь: " + inсomUser.Username + " - неизвестен сервису. Старт регистрации пользователя.")
+	user, err := t.registerUser(inсomUser)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	m.Lg.Info("RegisterUser.progress - успешно добавли нового пользователя в БД")
-
-	m.Mu.RLock()
-	m.UserCH[user.Login] = user
-	m.Mu.RUnlock()
-	m.Lg.Info("RegisterUser.progress - добавли нового пользователя в кеш ")
-
-	return nil
+	t.Lg.Info("RegisterUser.complete - успешно зарегистрировали новго пользователя в сервисе.")
+	return user, nil
 }
 
-func (m *Market) GetMyBalance(login string) (decimal.Decimal, decimal.Decimal, error) {
-	m.Lg.Info("GetMyBanance.start - подсчет баланса для пользователя: " + login)
-	cb, tw, err := m.Repo.GetInfoMyBalance(m.Ctx, login)
-	if err != nil {
-		return decimal.Zero, decimal.Zero, err
+// chekUser - проверка наличия пользователя в сиситеме.
+func (t *TgAssist) GetUser(incomID int64) (*model.User, bool) {
+	t.Mu.RLock()
+	user, ok := t.UserCH[incomID]
+	t.Mu.RUnlock()
+	if ok {
+		return user, true
 	}
-	m.Lg.Info(fmt.Sprintf("GetMyBanance.start - подсчет баланса для пользователя: %s - завершен. Баланс: %v, Выведено: %v", login, cb, tw))
+	return nil, false
+}
 
-	return cb, tw, nil
+// registerUser - регистрация нового пользователя.
+func (t *TgAssist) registerUser(inсomUser *tb.User) (*model.User, error) {
+	tc := time.Now().Format(time.RFC3339)
+	u := &model.User{
+		TgID:      inсomUser.ID,
+		FirstName: inсomUser.FirstName,
+		NickName:  inсomUser.Username,
+		Created:   tc,
+	}
+
+	err := t.Repo.RegisterUser(t.Ctx, u)
+	if err != nil {
+		return nil, err
+	}
+
+	t.Mu.Lock()
+	t.UserCH[u.TgID] = u
+	t.Mu.Unlock()
+
+	return u, nil
 }

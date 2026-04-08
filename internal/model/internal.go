@@ -9,25 +9,33 @@ const (
 	CONFLICT    = "данный URL"
 	ERRCONFLICT = "ERRCONFLICT"
 	//  статус расчёта начисления из blackBox
-	REGISTERED  = "REGISTERED"
-	INVALID     = "INVALID"
-	PROCESSING  = "PROCESSING"
-	PROCESSED   = "PROCESSED"
-	NEW         = "NEW"
-	ERROR       = "ERROR"
-	CALCULATION = "CALCULATION" // ДЛЯ НОВЫХ ЗАКАЗОВ
+	REGISTERED = "REGISTERED" // для новых
+	RUNNING    = "RUNNING"
+	NEW        = "NEW"
+	ERROR      = "ERROR"
+	DONE       = "DONE"
+	CANCELED   = "CANCELED"
+
+	ErrMsg = "*УПС 😱\nОшибка в сервисе😢, попробуйте позже.*"
 )
 
 type User struct {
-	Login     string
-	PassHash  string
-	OrderList map[int]*Order //[]*Order
+	TgID      int64
+	FirstName string
+	NickName  string
+	Created   string
+	FileList  map[int]*File //[]*Order
 }
-type Order struct {
-	OrderID int
+type File struct {
+	Name    string
+	MsgID   int
+	FileID  string
+	TaskID  string
+	Size    int64
 	Status  string
 	Created time.Time
-	Accrual string
+	Text    string
+	ChatID  int64
 }
 type AccrualRes struct {
 	Order   string      `json:"order"`

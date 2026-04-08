@@ -1,4 +1,4 @@
-# go-musthave-diploma-tpl
+# go-TgNoteAssist-diploma
 
 Шаблон репозитория для индивидуального дипломного проекта курса «Go-разработчик»
 
@@ -13,7 +13,7 @@
 Чтобы иметь возможность получать обновления автотестов и других частей шаблона, выполните команду:
 
 ```
-git remote add -m master template https://github.com/yandex-praktikum/go-musthave-diploma-tpl.git
+git remote add -m master template https://github.com/yandex-praktikum/go-TgNoteAssist-diploma.git
 ```
 
 Для обновления кода автотестов выполните команду:
