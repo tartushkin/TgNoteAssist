@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// GetList - список сохраненных встреч (обновленная версия).
+// GetList - список сохраненных встреч.
 func (t *TgAssist) GetList(user *model.User) (string, error) {
 	var lines []string
 
@@ -83,7 +83,6 @@ func (t *TgAssist) AskGigaChat(user *model.User, request string) (string, error)
 
 // getListItem - это функция-итератор (генератор строк).
 func getListItem(fileList map[int]*model.File) iter.Seq[string] {
-	// Возвращаем саму функцию-генератор
 	return func(yield func(string) bool) {
 		var n int
 		for i, file := range fileList {
@@ -102,12 +101,10 @@ func getListItem(fileList map[int]*model.File) iter.Seq[string] {
 	}
 }
 
-// generateChatLines - генератор строк для списка чатов.
-// Он возвращает итератор, который при каждой итерации выдает отформатированную строку.
+// generateChatLines - генератор строк для списка встреч.
 func generateChatLines(list []*model.File) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		for i, file := range list {
-			// Формируем строку для одной встречи
 			line := fmt.Sprintf(
 				"%d. **%s**\n   🗓 *Дата:* %s\n   📝 *ID-встречи:* %v\n\n",
 				i+1,
@@ -115,7 +112,6 @@ func generateChatLines(list []*model.File) iter.Seq[string] {
 				file.Created.Format("02.01.2006"),
 				file.MsgID,
 			)
-			// Передаем строку "наверх". Если yield вернет false, цикл прервется.
 			if !yield(line) {
 				return
 			}

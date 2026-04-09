@@ -96,7 +96,6 @@ func (r *Repo) InsertText(ctx context.Context, msgID int, text string) error {
 	return nil
 }
 
-// В вашем слое repository (например, repo.go)
 func (r *Repo) FindUserChats(ctx context.Context, nickName, keywords string) ([]*model.File, error) {
 	// Используем ILIKE для регистронезависимого поиска
 	query := `
