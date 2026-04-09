@@ -95,3 +95,33 @@ func (r *Repo) InsertText(ctx context.Context, msgID int, text string) error {
 	}
 	return nil
 }
+
+// В вашем слое repository (например, repo.go)
+func (r *Repo) FindUserChats(ctx context.Context, nickName, keywords string) ([]*model.File, error) {
+	// Используем ILIKE для регистронезависимого поиска
+	query := `
+        SELECT s_file_name, dt_created_at, n_msg_id
+        FROM tgassist.t_files
+        WHERE s_user = $1 AND t_text ILIKE '%' || $2 || '%'
+        ORDER BY dt_created_at DESC
+        LIMIT 10;`
+
+	rows, err := r.conn.QueryContext(ctx, query, nickName, keywords)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	fileList := []*model.File{}
+	for rows.Next() {
+		file := &model.File{}
+		if err := rows.Scan(&file.Name, &file.Created, &file.MsgID); err != nil {
+			return nil, err
+		}
+		fileList = append(fileList, file)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return fileList, nil
+}

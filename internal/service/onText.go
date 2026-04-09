@@ -3,32 +3,26 @@ package service
 import (
 	"TgNoteAssist/internal/model"
 	"fmt"
+	"iter"
 	"strconv"
 	"strings"
 )
 
-// GetList - список сохраненных встреч.
+// GetList - список сохраненных встреч (обновленная версия).
 func (t *TgAssist) GetList(user *model.User) (string, error) {
+	var lines []string
 
-	var result strings.Builder
 	if len(user.FileList) < 1 {
-		result.WriteString("*У вас пока еще нет встреч*😢")
-		return result.String(), nil
+		return "*У вас пока еще нет встреч*😢", nil
 	}
 
-	result.WriteString("📋 *Список ваших встреч:*\n\n")
+	lines = append(lines, "📋 *Список ваших встреч:*\n\n")
 
-	for i, file := range user.FileList {
-		result.WriteString(fmt.Sprintf(
-			"%d. **%s**\n   🗓 *Дата:* %s\n   📝 *ID-встречи:* %v\n\n",
-			i+1,
-			file.Name,
-			file.Created,
-			file.MsgID,
-		))
+	for line := range getListItem(user.FileList) {
+		lines = append(lines, line)
 	}
-
-	return result.String(), nil
+	result := strings.Join(lines, "\n")
+	return result, nil
 }
 
 // Get – получение текста встречи по id.
@@ -48,10 +42,27 @@ func (t *TgAssist) Get(msgID string) (string, error) {
 }
 
 // Find - поиск встречи по ключевым словам.
-func (t *TgAssist) Find(tgUserID int64, keywords string) error {
+func (t *TgAssist) Find(user, keywords string) (string, error) {
+	// 1. Получаем данные из базы
+	list, err := t.Repo.FindUserChats(t.Ctx, user, keywords)
+	if err != nil {
+		return "", fmt.Errorf("ошибка при поиске: %w", err)
+	}
 
-	// продумать логику
-	return nil
+	if len(list) == 0 {
+		return fmt.Sprintf("*Не нашли подходящих встреч по запросу:* *%s*\n*Попробуйте изменить ключевые слова.*", keywords), nil
+	}
+
+	var lines []string
+	lines = append(lines, fmt.Sprintf("📋 *Нашли совпадения по запросу '%s':*", keywords))
+
+	for line := range generateChatLines(list) {
+		lines = append(lines, line)
+	}
+
+	fullResult := strings.Join(lines, "\n")
+
+	return fullResult, nil
 }
 
 // AskGigaChat - запрос к GigaChat.
@@ -68,4 +79,46 @@ func (t *TgAssist) AskGigaChat(user *model.User, request string) (string, error)
 
 	// продумать логику
 	return res, nil
+}
+
+// getListItem - это функция-итератор (генератор строк).
+func getListItem(fileList map[int]*model.File) iter.Seq[string] {
+	// Возвращаем саму функцию-генератор
+	return func(yield func(string) bool) {
+		var n int
+		for i, file := range fileList {
+			line := fmt.Sprintf(
+				"%d. **%s**\n   🗓 *Дата:* %s\n   📝 *ID-встречи:* %v\n\n",
+				n+1,
+				file.Name,
+				file.Created,
+				i,
+			)
+			n++
+			if !yield(line) {
+				return
+			}
+		}
+	}
+}
+
+// generateChatLines - генератор строк для списка чатов.
+// Он возвращает итератор, который при каждой итерации выдает отформатированную строку.
+func generateChatLines(list []*model.File) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for i, file := range list {
+			// Формируем строку для одной встречи
+			line := fmt.Sprintf(
+				"%d. **%s**\n   🗓 *Дата:* %s\n   📝 *ID-встречи:* %v\n\n",
+				i+1,
+				file.Name,
+				file.Created.Format("02.01.2006"),
+				file.MsgID,
+			)
+			// Передаем строку "наверх". Если yield вернет false, цикл прервется.
+			if !yield(line) {
+				return
+			}
+		}
+	}
 }

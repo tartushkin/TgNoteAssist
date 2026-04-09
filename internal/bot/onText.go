@@ -87,11 +87,11 @@ func (b *botHandle) validateCMD(m tb.Context) (*model.User, string, error) {
 			return user, result, nil
 
 		case find:
-			err := b.TgBot.Find(user.TgID, args)
+			res, err := b.TgBot.Find(user.NickName, args)
 			if err != nil {
 				return user, "", err
 			}
-			return user, "result", nil
+			return user, res, nil
 
 		case chat:
 			res, err := b.TgBot.AskGigaChat(user, args)

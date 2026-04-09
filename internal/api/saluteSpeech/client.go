@@ -33,40 +33,9 @@ func NewSaluteClient(ctx context.Context, lg *slog.Logger, pool *x509.CertPool, 
 	client := resty.New()
 	client.SetTLSClientConfig(tlsConfig)
 	sc.client = client
-
-	//accessToken, err := gg.GetAccessToken()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//gg.Token = accessToken
-
-	//go gg.processGetToken(ctx, ping)
 	return sc, nil
 }
 
-// // 1. Получи access_token
-// func (gg *Client) GetAccessToken() (string, error) {
-//
-//		var result struct {
-//			AccessToken string `json:"access_token"`
-//		}
-//
-//		_, err := gg.client.
-//			R().
-//			SetHeader("Authorization", "Bearer "+gg.authKey).
-//			SetHeader("RqUID", uuid.New().String()).
-//			SetHeader("Content-Type", "application/x-www-form-urlencoded").
-//			SetBody("scope=GIGACHAT_API_PERS").
-//			SetResult(&result).
-//			Post(authURL)
-//		if err != nil {
-//			return "", err
-//		}
-//
-//		return result.AccessToken, nil
-//	}
-//
-// getSaluteSpeechAccessToken получает access_token для API SaluteSpeech.
 // clientID и clientSecret - это ваши учетные данные (логин:пароль) для сервиса.
 func (sp *Client) GetAccessToken() error {
 	var result struct {
@@ -174,45 +143,44 @@ func (c *Client) CreateRecognitionTask(requestFileID string) (string, error) {
 }
 
 // CheckTaskStatus проверяет статус задачи распознавания.
-func (c *Client) CheckStatus(taskID string) (string, error) {
+func (c *Client) CheckStatus(taskID string) (string, string, error) {
 	// URL для проверки статуса задачи
 	// 1. Формируем базовый URL
 
 	urlWithQuery := fmt.Sprintf("%s?id=%s", checkStatus, taskID)
-
 	res := statusResp{}
 	// Отправка запроса
 	resp, err := c.client.R().
 		SetHeader("Authorization", "Bearer "+c.Token).
 		SetResult(&res).
+		//SetDoNotParseResponse(true).
 		Get(urlWithQuery)
 
 	if err != nil {
-		return "", fmt.Errorf("ошибка при отправке запроса: %v", err)
+		return "", "", fmt.Errorf("ошибка при отправке запроса: %v", err)
 	}
-	//// Читаем "сырое" тело ответа
+	// Читаем "сырое" тело ответа
 	//defer resp.RawBody().Close()
 	//bodyBytes, _ := io.ReadAll(resp.RawBody())
-	//rawResponse = string(bodyBytes)
-	//
-	//// Выводим в лог всё, что получили
+	//rawResponse := string(bodyBytes)
+
+	// Выводим в лог всё, что получили
 	//fmt.Printf("--- ОТВЕТ СЕРВЕРА (СТАТУС) ---\n")
 	//fmt.Printf("Код HTTP: %d\n", resp.StatusCode())
 	//fmt.Printf("Тело ответа: %s\n", rawResponse)
 	//fmt.Println("----------------------------------")
 	//fmt.Println("ответ - ", res)
 	if resp.IsError() {
-		return "", fmt.Errorf("API вернуло ошибку %d: %s", resp.StatusCode(), resp.Status())
+		return "", "", fmt.Errorf("API вернуло ошибку %d: %s", resp.StatusCode(), resp.Status())
 	}
 
-	return res.Result.Status, nil
+	return res.Result.Status, res.Result.ID, nil
 }
 
 // GetTranscriptionResult получает финальный результат распознавания.
 func (c *Client) GetResult(responseFileID string) (string, error) {
 	// Формируем URL с query-параметром
 	url := fmt.Sprintf("https://smartspeech.sber.ru/rest/v1/data:download?response_file_id=%s", responseFileID)
-
 	var resultText string
 
 	resp, err := c.client.R().
@@ -226,7 +194,17 @@ func (c *Client) GetResult(responseFileID string) (string, error) {
 	}
 
 	if resp.IsError() {
-		return "", fmt.Errorf("API вернуло ошибку %d при скачивании: %s", resp.StatusCode(), resp.Status())
+		defer resp.RawBody().Close()
+		errorBodyBytes, _ := io.ReadAll(resp.RawBody())
+		errorBody := string(errorBodyBytes)
+
+		// Выводим в лог и HTTP-статус, и тело ответа
+		return "", fmt.Errorf(
+			"API вернуло ошибку %d при скачивании: %s. ТЕЛО ОТВЕТА: %s",
+			resp.StatusCode(),
+			resp.Status(),
+			errorBody,
+		)
 	}
 
 	// Читаем "сырое" тело ответа (бинарные данные)

@@ -51,7 +51,9 @@ func (t *TgAssist) createFile(user *model.User, msg *tb.Message, tgFile *tb.File
 func (t *TgAssist) getText(response CallbackFunc, f *model.File, file *os.File) {
 	t.Lg.Info("getText.start - старт процесса  'извлечение транскрипции' по файлу : " + f.Name)
 	var text string
-	defer response(f.ChatID, f.MsgID, text)
+	defer func() {
+		response(f.ChatID, f.MsgID, text)
+	}()
 
 	reqFileID, err := t.salutClient.SetFile(file.Name())
 	if err != nil {
@@ -77,7 +79,7 @@ func (t *TgAssist) getText(response CallbackFunc, f *model.File, file *os.File) 
 		case <-ticker.C:
 			ticker.Reset(t.paramGetStatus)
 
-			status, err := t.salutClient.CheckStatus(taskID)
+			status, id, err := t.salutClient.CheckStatus(taskID)
 			if err != nil {
 				text = "возникла ошибка в работе сервиса, попробуйдет позже"
 				t.Lg.Error("getText.CheckStatus.err - возникла ошибка при опросе статуса задачи: " + err.Error())
@@ -96,7 +98,7 @@ func (t *TgAssist) getText(response CallbackFunc, f *model.File, file *os.File) 
 				continue
 			case model.DONE:
 				t.Lg.Info("getText.completed - задача в статусе: " + status + ", по файлу - " + f.Name)
-				transcript, err := t.salutClient.GetResult(f.FileID)
+				transcript, err := t.salutClient.GetResult(id)
 				if err != nil {
 					t.Lg.Error("getText.GetResult.err - возникла ошибка при отправки файла на извлечение транскрипции: " + err.Error())
 					return
@@ -129,9 +131,9 @@ func (t *TgAssist) updateStatus(file *model.File, status string) error {
 		return err
 	}
 
-	t.Mu.RLock()
+	t.Mu.Lock()
 	file.Status = status
-	t.Mu.RUnlock()
+	t.Mu.Unlock()
 
 	// может кеш обновить
 	t.Lg.Info("updateFile.comple - успешно обновили cтаус: " + status + " - у файла: " + file.Name)
@@ -144,9 +146,9 @@ func (t *TgAssist) insertText(file *model.File, text string) error {
 		return err
 	}
 
-	t.Mu.RLock()
+	t.Mu.Lock()
 	file.Text = text
-	t.Mu.RUnlock()
+	t.Mu.Unlock()
 
 	// может кеш обновить
 	t.Lg.Info("updateFile.comple - успешно вставили транскрипцию файла: " + file.Name)
